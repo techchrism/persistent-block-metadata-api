@@ -55,7 +55,7 @@ public class PersistentBlockMetadataAPI implements Listener
      */
     public NamespacedKey keyFor(@NotNull Block block)
     {
-        return new NamespacedKey(plugin, (block.getX() % 16) + "," + block.getY() + "," + (block.getZ() % 16));
+        return new NamespacedKey(plugin, (block.getX() % 16) + "_" + block.getY() + "_" + (block.getZ() % 16));
     }
     
     /**
