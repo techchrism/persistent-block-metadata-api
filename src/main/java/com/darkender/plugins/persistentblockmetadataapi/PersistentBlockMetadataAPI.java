@@ -41,10 +41,16 @@ public class PersistentBlockMetadataAPI implements Listener
         plugin.getServer().getPluginManager().registerEvents(this, plugin);
         plugin.getServer().getScheduler().scheduleSyncRepeatingTask(plugin, () ->
         {
-            for(AreaEffectCloud cloud : loadedClouds.values())
+            loadedClouds.entrySet().removeIf(entry ->
             {
-                cloud.setDuration(60 * 20);
-            }
+                if(!entry.getValue().isValid() || entry.getValue().isDead())
+                {
+                    Bukkit.getLogger().warning("AreaEffectCloud is dead or invalid!");
+                    return true;
+                }
+                entry.getValue().setTicksLived(1);
+                return false;
+            });
         }, 1L, 20L);
     }
     
@@ -124,6 +130,53 @@ public class PersistentBlockMetadataAPI implements Listener
     }
     
     /**
+     * Removes a tag container for the specified block
+     * @param block the block to remove the tag container from
+     */
+    public void removeContainer(@NotNull Block block)
+    {
+        remove(block, PersistentDataType.TAG_CONTAINER);
+    }
+    
+    /**
+     * Gets a tag container for a block and creates one if it doesn't exist
+     * @param block the block to get the tag container for
+     * @return the tag container for the block
+     */
+    public PersistentDataContainer getContainer(@NotNull Block block)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            AreaEffectCloud cloud = block.getWorld().spawn(
+                    new Location(block.getWorld(), block.getChunk().getX() * 16, 1, block.getChunk().getZ() * 16),
+                    AreaEffectCloud.class);
+            cloud.setDuration(60 * 20);
+            cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
+            cloud.clearCustomEffects();
+            cloud.setRadiusOnUse(0);
+            cloud.setRadiusPerTick(0);
+            loadedClouds.put(block.getChunk(), cloud);
+        }
+        PersistentDataContainer data = loadedClouds.get(block.getChunk()).getPersistentDataContainer();
+        NamespacedKey blockKey = keyFor(block);
+        if(!data.has(blockKey, PersistentDataType.TAG_CONTAINER))
+        {
+            data.set(countKey, PersistentDataType.INTEGER, data.getOrDefault(countKey, PersistentDataType.INTEGER, 0) + 1);
+            data.set(blockKey, PersistentDataType.TAG_CONTAINER, data.getAdapterContext().newPersistentDataContainer());
+        }
+        return data.get(blockKey, PersistentDataType.TAG_CONTAINER);
+    }
+    
+    public void setContainer(@NotNull Block block, @NotNull PersistentDataContainer container)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            throw new IllegalArgumentException();
+        }
+        set(block, PersistentDataType.TAG_CONTAINER, container);
+    }
+    
+    /**
      * Removes metadata from the specified block
      * @param block the block to remove metadata from
      * @param type the type of metadata
@@ -189,7 +242,7 @@ public class PersistentBlockMetadataAPI implements Listener
         // "top off" the cloud timer and remove it from the map
         if(loadedClouds.containsKey(event.getChunk()))
         {
-            loadedClouds.get(event.getChunk()).setDuration(60 * 20);
+            loadedClouds.get(event.getChunk()).setTicksLived(1);
             loadedClouds.remove(event.getChunk());
         }
     }
