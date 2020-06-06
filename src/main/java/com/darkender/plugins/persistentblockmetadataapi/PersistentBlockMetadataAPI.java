@@ -2,7 +2,6 @@ package com.darkender.plugins.persistentblockmetadataapi;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
-import org.bukkit.craftbukkit.v1_15_R1.persistence.CraftPersistentDataContainer;
 import org.bukkit.entity.AreaEffectCloud;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -15,6 +14,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -25,6 +27,7 @@ public class PersistentBlockMetadataAPI implements Listener
     private final Plugin plugin;
     private final NamespacedKey countKey;
     private final Map<Chunk, AreaEffectCloud> loadedClouds = new HashMap<>();
+    private static MethodHandle getRawHandle;
     
     /**
      * Construct the PersistentBlockMetadataAPI
@@ -33,6 +36,16 @@ public class PersistentBlockMetadataAPI implements Listener
     public PersistentBlockMetadataAPI(@NotNull Plugin plugin)
     {
         this.plugin = plugin;
+        try
+        {
+            getRawHandle = MethodHandles.lookup().findVirtual(getCraftBukkitClass("persistence.CraftPersistentDataContainer"),
+                    "getRaw", MethodType.methodType(Map.class));
+        }
+        catch(IllegalAccessException | NoSuchMethodException | ClassNotFoundException e)
+        {
+            e.printStackTrace();
+        }
+    
         countKey = new NamespacedKey(plugin, "metacount");
         for(World world : plugin.getServer().getWorlds())
         {
@@ -142,8 +155,17 @@ public class PersistentBlockMetadataAPI implements Listener
         {
             return null;
         }
-        CraftPersistentDataContainer container = (CraftPersistentDataContainer) loadedClouds.get(chunk).getPersistentDataContainer();
-        return container.getRaw().keySet();
+        Map<String, Object> map = null;
+        try
+        {
+            map = (Map<String, Object>) getRawHandle.invoke(loadedClouds.get(chunk).getPersistentDataContainer());
+        }
+        catch(Throwable throwable)
+        {
+            throwable.printStackTrace();
+            return null;
+        }
+        return map.keySet();
     }
     
     public Set<Location> getStoredMetadata(Chunk chunk)
@@ -286,5 +308,10 @@ public class PersistentBlockMetadataAPI implements Listener
             loadedClouds.get(event.getChunk()).setTicksLived(1);
             loadedClouds.remove(event.getChunk());
         }
+    }
+    
+    private Class<?> getCraftBukkitClass(String name) throws ClassNotFoundException
+    {
+        return Class.forName("org.bukkit.craftbukkit." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + "." + name);
     }
 }
