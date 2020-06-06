@@ -2,6 +2,7 @@ package com.darkender.plugins.persistentblockmetadataapi;
 
 import org.bukkit.*;
 import org.bukkit.block.Block;
+import org.bukkit.craftbukkit.v1_15_R1.persistence.CraftPersistentDataContainer;
 import org.bukkit.entity.AreaEffectCloud;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -127,6 +128,40 @@ public class PersistentBlockMetadataAPI implements Listener
             return null;
         }
         return loadedClouds.get(block.getChunk()).getPersistentDataContainer().get(keyFor(block), type);
+    }
+    
+    public Set<String> getKeys(Chunk chunk)
+    {
+        if(!loadedClouds.containsKey(chunk))
+        {
+            return null;
+        }
+        CraftPersistentDataContainer container = (CraftPersistentDataContainer) loadedClouds.get(chunk).getPersistentDataContainer();
+        return container.getRaw().keySet();
+    }
+    
+    public Set<Location> getStoredMetadata(Chunk chunk)
+    {
+        Set<String> keys = getKeys(chunk);
+        if(keys == null)
+        {
+            return null;
+        }
+        
+        Set<Location> locations = new HashSet<>();
+        for(String key : keys)
+        {
+            if(key.contains("_"))
+            {
+                String after = key.split(":")[1];
+                String[] parts = after.split("_");
+                locations.add(new Location(chunk.getWorld(),
+                        Integer.parseInt(parts[0]) + (chunk.getX() * 16),
+                        Integer.parseInt(parts[1]),
+                        Integer.parseInt(parts[2]) + (chunk.getZ() * 16)));
+            }
+        }
+        return locations;
     }
     
     /**
