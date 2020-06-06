@@ -14,22 +14,20 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.invoke.CallSite;
-import java.lang.invoke.LambdaMetafactory;
+import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
 
 public class PersistentBlockMetadataAPI implements Listener
 {
     private final Plugin plugin;
     private final NamespacedKey countKey;
     private final Map<Chunk, AreaEffectCloud> loadedClouds = new HashMap<>();
-    private static Function getRawFunction;
+    private static final MethodHandle getRawHandle = findGetRawHandle();
     
     /**
      * Construct the PersistentBlockMetadataAPI
@@ -38,24 +36,7 @@ public class PersistentBlockMetadataAPI implements Listener
     public PersistentBlockMetadataAPI(@NotNull Plugin plugin)
     {
         this.plugin = plugin;
-        try
-        {
-            // From https://www.optaplanner.org/blog/2018/01/09/JavaReflectionButMuchFaster.html
-            MethodHandles.Lookup lookup = MethodHandles.lookup();
-            Class<?> craftPersistentDataContainer = getCraftBukkitClass("persistence.CraftPersistentDataContainer");
-            CallSite site = LambdaMetafactory.metafactory(lookup,
-                    "apply",
-                    MethodType.methodType(Function.class),
-                    MethodType.methodType(Object.class, Object.class),
-                    lookup.findVirtual(craftPersistentDataContainer, "getRaw", MethodType.methodType(Map.class)),
-                    MethodType.methodType(Map.class, craftPersistentDataContainer));
-            getRawFunction = (Function) site.getTarget().invokeExact();
-        }
-        catch(Throwable e)
-        {
-            e.printStackTrace();
-        }
-    
+        
         countKey = new NamespacedKey(plugin, "metacount");
         for(World world : plugin.getServer().getWorlds())
         {
@@ -79,6 +60,20 @@ public class PersistentBlockMetadataAPI implements Listener
                 return false;
             });
         }, 1L, 20L);
+    }
+    
+    private static MethodHandle findGetRawHandle()
+    {
+        try
+        {
+            return MethodHandles.lookup().findVirtual(getCraftBukkitClass("persistence.CraftPersistentDataContainer"),
+                    "getRaw", MethodType.methodType(Map.class));
+        }
+        catch(Throwable e)
+        {
+            e.printStackTrace();
+        }
+        return null;
     }
     
     /**
@@ -164,12 +159,12 @@ public class PersistentBlockMetadataAPI implements Listener
      * @param container the container to get the keys for
      * @return the set of keys stored on the container
      */
-    public static Set<String> getKeys(PersistentDataContainer container)
+    public static Set<String> getKeys(@NotNull PersistentDataContainer container)
     {
         Map<String, Object> map;
         try
         {
-            map = (Map<String, Object>) getRawFunction.apply(container);
+            map = (Map<String, Object>) getRawHandle.invoke(container);
         }
         catch(Throwable throwable)
         {
@@ -184,18 +179,13 @@ public class PersistentBlockMetadataAPI implements Listener
      * @param chunk the chunk to check
      * @return a set of blocks that have metadata stored
      */
-    public Set<Block> getMetadataLocations(Chunk chunk)
+    public Set<Block> getMetadataLocations(@NotNull Chunk chunk)
     {
         if(!loadedClouds.containsKey(chunk))
         {
             return null;
         }
         Set<String> keys = getKeys(loadedClouds.get(chunk).getPersistentDataContainer());
-        if(keys == null)
-        {
-            return null;
-        }
-        
         Set<Block> blocks = new HashSet<>();
         for(String key : keys)
         {
@@ -343,7 +333,7 @@ public class PersistentBlockMetadataAPI implements Listener
         }
     }
     
-    private Class<?> getCraftBukkitClass(String name) throws ClassNotFoundException
+    private static Class<?> getCraftBukkitClass(String name) throws ClassNotFoundException
     {
         return Class.forName("org.bukkit.craftbukkit." + Bukkit.getServer().getClass().getPackage().getName().split("\\.")[3] + "." + name);
     }
