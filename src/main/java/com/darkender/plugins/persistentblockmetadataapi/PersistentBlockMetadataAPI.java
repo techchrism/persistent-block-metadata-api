@@ -46,7 +46,7 @@ public class PersistentBlockMetadataAPI implements Listener
             CallSite site = LambdaMetafactory.metafactory(lookup,
                     "apply",
                     MethodType.methodType(Function.class),
-                    MethodType.methodType(Object.class),
+                    MethodType.methodType(Object.class, Object.class),
                     lookup.findVirtual(craftPersistentDataContainer, "getRaw", MethodType.methodType(Map.class)),
                     MethodType.methodType(Map.class, craftPersistentDataContainer));
             getRawFunction = (Function) site.getTarget().invokeExact();
