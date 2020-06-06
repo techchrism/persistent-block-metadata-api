@@ -14,20 +14,22 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.lang.invoke.MethodHandle;
+import java.lang.invoke.CallSite;
+import java.lang.invoke.LambdaMetafactory;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 public class PersistentBlockMetadataAPI implements Listener
 {
     private final Plugin plugin;
     private final NamespacedKey countKey;
     private final Map<Chunk, AreaEffectCloud> loadedClouds = new HashMap<>();
-    private static MethodHandle getRawHandle;
+    private static Function getRawFunction;
     
     /**
      * Construct the PersistentBlockMetadataAPI
@@ -38,10 +40,18 @@ public class PersistentBlockMetadataAPI implements Listener
         this.plugin = plugin;
         try
         {
-            getRawHandle = MethodHandles.lookup().findVirtual(getCraftBukkitClass("persistence.CraftPersistentDataContainer"),
-                    "getRaw", MethodType.methodType(Map.class));
+            // From https://www.optaplanner.org/blog/2018/01/09/JavaReflectionButMuchFaster.html
+            MethodHandles.Lookup lookup = MethodHandles.lookup();
+            Class<?> craftPersistentDataContainer = getCraftBukkitClass("persistence.CraftPersistentDataContainer");
+            CallSite site = LambdaMetafactory.metafactory(lookup,
+                    "apply",
+                    MethodType.methodType(Function.class),
+                    MethodType.methodType(Object.class),
+                    lookup.findVirtual(craftPersistentDataContainer, "getRaw", MethodType.methodType(Map.class)),
+                    MethodType.methodType(Map.class, craftPersistentDataContainer));
+            getRawFunction = (Function) site.getTarget().invokeExact();
         }
-        catch(IllegalAccessException | NoSuchMethodException | ClassNotFoundException e)
+        catch(Throwable e)
         {
             e.printStackTrace();
         }
@@ -155,10 +165,10 @@ public class PersistentBlockMetadataAPI implements Listener
         {
             return null;
         }
-        Map<String, Object> map = null;
+        Map<String, Object> map;
         try
         {
-            map = (Map<String, Object>) getRawHandle.invoke(loadedClouds.get(chunk).getPersistentDataContainer());
+            map = (Map<String, Object>) getRawFunction.apply(loadedClouds.get(chunk).getPersistentDataContainer());
         }
         catch(Throwable throwable)
         {
