@@ -15,7 +15,10 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 public class PersistentBlockMetadataAPI implements Listener
 {
@@ -62,7 +65,10 @@ public class PersistentBlockMetadataAPI implements Listener
      */
     public NamespacedKey keyFor(@NotNull Block block)
     {
-        return new NamespacedKey(plugin, (block.getX() % 16) + "_" + block.getY() + "_" + (block.getZ() % 16));
+        return new NamespacedKey(plugin,
+                (block.getX() - (block.getChunk().getX() * 16))
+                + "_" + block.getY() + "_" +
+                (block.getZ() - (block.getChunk().getZ() * 16)));
     }
     
     /**
