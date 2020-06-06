@@ -159,47 +159,57 @@ public class PersistentBlockMetadataAPI implements Listener
         return loadedClouds.get(block.getChunk()).getPersistentDataContainer().get(keyFor(block), type);
     }
     
-    public Set<String> getKeys(Chunk chunk)
+    /**
+     * Gets a set of string keys (including namespace) stored on a PersistentDataContainer
+     * @param container the container to get the keys for
+     * @return the set of keys stored on the container
+     */
+    public static Set<String> getKeys(PersistentDataContainer container)
+    {
+        Map<String, Object> map;
+        try
+        {
+            map = (Map<String, Object>) getRawFunction.apply(container);
+        }
+        catch(Throwable throwable)
+        {
+            throwable.printStackTrace();
+            return new HashSet<>();
+        }
+        return map.keySet();
+    }
+    
+    /**
+     * Gets a set of blocks that have metadata stored
+     * @param chunk the chunk to check
+     * @return a set of blocks that have metadata stored
+     */
+    public Set<Block> getMetadataLocations(Chunk chunk)
     {
         if(!loadedClouds.containsKey(chunk))
         {
             return null;
         }
-        Map<String, Object> map;
-        try
-        {
-            map = (Map<String, Object>) getRawFunction.apply(loadedClouds.get(chunk).getPersistentDataContainer());
-        }
-        catch(Throwable throwable)
-        {
-            throwable.printStackTrace();
-            return null;
-        }
-        return map.keySet();
-    }
-    
-    public Set<Location> getStoredMetadata(Chunk chunk)
-    {
-        Set<String> keys = getKeys(chunk);
+        Set<String> keys = getKeys(loadedClouds.get(chunk).getPersistentDataContainer());
         if(keys == null)
         {
             return null;
         }
         
-        Set<Location> locations = new HashSet<>();
+        Set<Block> blocks = new HashSet<>();
         for(String key : keys)
         {
             if(key.contains("_"))
             {
                 String after = key.split(":")[1];
                 String[] parts = after.split("_");
-                locations.add(new Location(chunk.getWorld(),
+                blocks.add(new Location(chunk.getWorld(),
                         Integer.parseInt(parts[0]) + (chunk.getX() * 16),
                         Integer.parseInt(parts[1]),
-                        Integer.parseInt(parts[2]) + (chunk.getZ() * 16)));
+                        Integer.parseInt(parts[2]) + (chunk.getZ() * 16)).getBlock());
             }
         }
-        return locations;
+        return blocks;
     }
     
     /**
@@ -296,6 +306,12 @@ public class PersistentBlockMetadataAPI implements Listener
                 PersistentDataContainer container = e.getPersistentDataContainer();
                 if(container.has(countKey, PersistentDataType.INTEGER))
                 {
+                    // Check if there's data and warn if there isn't
+                    if(getKeys(container).size() == 1)
+                    {
+                        Bukkit.getLogger().warning("Cloud at " + chunk.getX() + " " + chunk.getZ() +
+                                " has a key size of only 1! (metacount is " + container.get(countKey, PersistentDataType.INTEGER) + ")");
+                    }
                     loadedClouds.put(chunk, (AreaEffectCloud) e);
                     break;
                 }
@@ -315,7 +331,14 @@ public class PersistentBlockMetadataAPI implements Listener
         // "top off" the cloud timer and remove it from the map
         if(loadedClouds.containsKey(event.getChunk()))
         {
-            loadedClouds.get(event.getChunk()).setTicksLived(1);
+            AreaEffectCloud cloud = loadedClouds.get(event.getChunk());
+            if(getKeys(cloud.getPersistentDataContainer()).size() == 1)
+            {
+                Bukkit.getLogger().warning("Cloud at " + event.getChunk().getX() + " " + event.getChunk().getZ() +
+                        " has a key size of only 1! (metacount is " +
+                        cloud.getPersistentDataContainer().get(countKey, PersistentDataType.INTEGER) + ")");
+            }
+            cloud.setTicksLived(1);
             loadedClouds.remove(event.getChunk());
         }
     }
