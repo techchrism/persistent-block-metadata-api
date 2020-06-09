@@ -9,8 +9,9 @@ Advantages:
   the blocks in the chunk because it only gets saved when the chunk is saved.
   Using an external database could create a mismatch between metadata and block state.
 * This solution uses Spigot's built-in apis
+* Saved data can be backed up in a world save and can be copied if the region is copied
 * Removing or disabling the plugin storing metadata causes the clouds to fade away - no manual cleanup is needed
 
 Drawbacks:
-* Area effect clouds can be killed by commands which wipes saved metadata
 * Using entities instead of direct Java objects is significantly less efficient
+* Uninstalling/disabling a plugin using this API then reinstalling/enabling it will remove saved data

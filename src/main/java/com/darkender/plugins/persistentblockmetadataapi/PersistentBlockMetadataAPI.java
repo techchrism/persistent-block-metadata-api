@@ -29,6 +29,8 @@ public class PersistentBlockMetadataAPI implements Listener
     private final NamespacedKey countKey;
     private final Map<Chunk, AreaEffectCloud> loadedClouds = new HashMap<>();
     private static final MethodHandle getRawHandle = findGetRawHandle();
+    private boolean attemptReconstruction = true;
+    private final Map<Chunk, AreaEffectCloud> reconstructedClouds = new HashMap<>();
     
     /**
      * Construct the PersistentBlockMetadataAPI
@@ -55,11 +57,26 @@ public class PersistentBlockMetadataAPI implements Listener
                 if(!entry.getValue().isValid() || entry.getValue().isDead())
                 {
                     Bukkit.getLogger().warning("AreaEffectCloud is dead or invalid!");
+                    if(attemptReconstruction)
+                    {
+                        PersistentDataContainer old = entry.getValue().getPersistentDataContainer();
+                        AreaEffectCloud newCloud = spawnCloud(entry.getValue().getLocation());
+                        PersistentDataContainer newContainer = newCloud.getPersistentDataContainer();
+                        getRawTags(newContainer).putAll(getRawTags(old));
+                        reconstructedClouds.put(entry.getKey(), newCloud);
+                    }
                     return true;
                 }
                 entry.getValue().setTicksLived(1);
                 return false;
             });
+            
+            if(attemptReconstruction && reconstructedClouds.size() > 0)
+            {
+                loadedClouds.putAll(reconstructedClouds);
+                reconstructedClouds.clear();
+            }
+            
         }, 1L, 20L);
     }
     
@@ -75,6 +92,24 @@ public class PersistentBlockMetadataAPI implements Listener
             e.printStackTrace();
         }
         return null;
+    }
+    
+    /**
+     * Checks if AreaEffectCloud reconstruction should be attempted
+     * @return true if AreaEffectCloud reconstruction is enabled
+     */
+    public boolean shouldAttemptReconstruction()
+    {
+        return attemptReconstruction;
+    }
+    
+    /**
+     * Sets whether or not AreaEffectCloud reconstruction is enabled
+     * @param attemptReconstruction whether or not AreaEffectCloud reconstruction is enabled
+     */
+    public void setAttemptReconstruction(boolean attemptReconstruction)
+    {
+        this.attemptReconstruction = attemptReconstruction;
     }
     
     private Location getCloudPos(Block block)
@@ -164,11 +199,11 @@ public class PersistentBlockMetadataAPI implements Listener
     }
     
     /**
-     * Gets a set of string keys (including namespace) stored on a PersistentDataContainer
-     * @param container the container to get the keys for
-     * @return the set of keys stored on the container
+     * Gets the raw tags of a container
+     * @param container the container to get the raw tags for
+     * @return a map of string keys to raw tags
      */
-    public static Set<String> getKeys(@NotNull PersistentDataContainer container)
+    public static Map<String, Object> getRawTags(@NotNull PersistentDataContainer container)
     {
         Map<String, Object> map;
         try
@@ -178,9 +213,19 @@ public class PersistentBlockMetadataAPI implements Listener
         catch(Throwable throwable)
         {
             throwable.printStackTrace();
-            return new HashSet<>();
+            return new HashMap<>();
         }
-        return map.keySet();
+        return map;
+    }
+    
+    /**
+     * Gets a set of string keys (including namespace) stored on a PersistentDataContainer
+     * @param container the container to get the keys for
+     * @return the set of keys stored on the container
+     */
+    public static Set<String> getKeys(@NotNull PersistentDataContainer container)
+    {
+        return getRawTags(container).keySet();
     }
     
     /**
