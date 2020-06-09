@@ -6,6 +6,7 @@ import org.bukkit.entity.AreaEffectCloud;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
@@ -309,13 +310,16 @@ public class PersistentBlockMetadataAPI implements Listener
         }
     }
     
-    @EventHandler(ignoreCancelled = true)
+    // Priority low so regular listeners can query metddata at normal priority
+    // and LOWEST listeners can still cancel the event
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     private void onChunkLoad(ChunkLoadEvent event)
     {
         checkChunk(event.getChunk());
     }
     
-    @EventHandler(ignoreCancelled = true)
+    // Priority monitor so regular listeners can query metddata at normal priority
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     private void onChunkUnload(ChunkUnloadEvent event)
     {
         // "top off" the cloud timer and remove it from the map
