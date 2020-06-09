@@ -77,6 +77,22 @@ public class PersistentBlockMetadataAPI implements Listener
         return null;
     }
     
+    private Location getCloudPos(Block block)
+    {
+        return new Location(block.getWorld(), (block.getX() % 16) * 16, 1, (block.getZ() % 16) * 16);
+    }
+    
+    private AreaEffectCloud spawnCloud(Location location)
+    {
+        AreaEffectCloud cloud = location.getWorld().spawn(location, AreaEffectCloud.class);
+        cloud.setDuration(60 * 20);
+        cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
+        cloud.clearCustomEffects();
+        cloud.setRadiusOnUse(0);
+        cloud.setRadiusPerTick(0);
+        return cloud;
+    }
+    
     /**
      * Gets a NamespacedKey unique to a chunk for a particular block
      * @param block the Block to get the key for
@@ -119,15 +135,7 @@ public class PersistentBlockMetadataAPI implements Listener
     {
         if(!loadedClouds.containsKey(block.getChunk()))
         {
-            AreaEffectCloud cloud = block.getWorld().spawn(
-                    new Location(block.getWorld(), (block.getX() % 16) * 16, 1, (block.getZ() % 16) * 16),
-                    AreaEffectCloud.class);
-            cloud.setDuration(60 * 20);
-            cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
-            cloud.clearCustomEffects();
-            cloud.setRadiusOnUse(0);
-            cloud.setRadiusPerTick(0);
-            loadedClouds.put(block.getChunk(), cloud);
+            loadedClouds.put(block.getChunk(), spawnCloud(getCloudPos(block)));
         }
         PersistentDataContainer data = loadedClouds.get(block.getChunk()).getPersistentDataContainer();
         NamespacedKey blockKey = keyFor(block);
@@ -221,15 +229,7 @@ public class PersistentBlockMetadataAPI implements Listener
     {
         if(!loadedClouds.containsKey(block.getChunk()))
         {
-            AreaEffectCloud cloud = block.getWorld().spawn(
-                    new Location(block.getWorld(), block.getChunk().getX() * 16, 1, block.getChunk().getZ() * 16),
-                    AreaEffectCloud.class);
-            cloud.setDuration(60 * 20);
-            cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
-            cloud.clearCustomEffects();
-            cloud.setRadiusOnUse(0);
-            cloud.setRadiusPerTick(0);
-            loadedClouds.put(block.getChunk(), cloud);
+            loadedClouds.put(block.getChunk(), spawnCloud(getCloudPos(block)));
         }
         PersistentDataContainer data = loadedClouds.get(block.getChunk()).getPersistentDataContainer();
         NamespacedKey blockKey = keyFor(block);
