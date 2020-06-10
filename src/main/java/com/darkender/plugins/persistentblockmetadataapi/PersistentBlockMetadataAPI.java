@@ -8,6 +8,7 @@ import org.bukkit.entity.EntityType;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.world.ChunkLoadEvent;
 import org.bukkit.event.world.ChunkUnloadEvent;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -18,10 +19,7 @@ import org.jetbrains.annotations.NotNull;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 public class PersistentBlockMetadataAPI implements Listener
 {
@@ -29,8 +27,11 @@ public class PersistentBlockMetadataAPI implements Listener
     private final NamespacedKey countKey;
     private final Map<Chunk, AreaEffectCloud> loadedClouds = new HashMap<>();
     private static final MethodHandle getRawHandle = findGetRawHandle();
-    private boolean attemptReconstruction = true;
+    private boolean attemptReconstruction;
+    private final boolean preventSending;
+    private boolean sendPreventionReady = false;
     private final Map<Chunk, AreaEffectCloud> reconstructedClouds = new HashMap<>();
+    private final Set<CloudID> hiddenIDs = new HashSet<>();
     
     /**
      * Construct the PersistentBlockMetadataAPI
@@ -38,7 +39,20 @@ public class PersistentBlockMetadataAPI implements Listener
      */
     public PersistentBlockMetadataAPI(@NotNull Plugin plugin)
     {
+        this(plugin, true, true);
+    }
+    
+    /**
+     * Construct the PersistentBlockMetadataAPI
+     * @param plugin the plugin using this API. Registers keys, events, and timers with this plugin
+     * @param attemptReconstruction if cloud reconstruction (upon detected death) should be enabled
+     * @param preventSending if the server should prevent sending the entity packet
+     */
+    public PersistentBlockMetadataAPI(@NotNull Plugin plugin, boolean attemptReconstruction, boolean preventSending)
+    {
         this.plugin = plugin;
+        this.attemptReconstruction = attemptReconstruction;
+        this.preventSending = preventSending;
         
         countKey = new NamespacedKey(plugin, "metacount");
         for(World world : plugin.getServer().getWorlds())
@@ -46,6 +60,15 @@ public class PersistentBlockMetadataAPI implements Listener
             for(Chunk chunk : world.getLoadedChunks())
             {
                 checkChunk(chunk);
+            }
+        }
+        
+        if(preventSending)
+        {
+            if(Bukkit.getPluginManager().isPluginEnabled("ProtocolLib"))
+            {
+                CloudSendPrevention.onReady(plugin, this);
+                sendPreventionReady = true;
             }
         }
         
@@ -114,18 +137,40 @@ public class PersistentBlockMetadataAPI implements Listener
     
     private Location getCloudPos(Block block)
     {
-        return new Location(block.getWorld(), (block.getX() % 16) * 16, 1, (block.getZ() % 16) * 16);
+        return new Location(block.getWorld(), block.getChunk().getX() * 16, 1, block.getChunk().getZ() * 16);
     }
     
     private AreaEffectCloud spawnCloud(Location location)
     {
-        AreaEffectCloud cloud = location.getWorld().spawn(location, AreaEffectCloud.class);
-        cloud.setDuration(60 * 20);
-        cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
-        cloud.clearCustomEffects();
-        cloud.setRadiusOnUse(0);
-        cloud.setRadiusPerTick(0);
-        return cloud;
+        return location.getWorld().spawn(location, AreaEffectCloud.class, cloud ->
+        {
+            hiddenIDs.add(new CloudID(cloud.getEntityId(), cloud.getWorld().getUID()));
+            cloud.clearCustomEffects();
+            cloud.setDuration(60 * 20);
+            cloud.setParticle(Particle.BLOCK_CRACK, Material.AIR.createBlockData());
+            cloud.setSilent(true);
+            cloud.setRadius(0.0F);
+            cloud.setRadiusOnUse(0);
+            cloud.setRadiusPerTick(0);
+        });
+    }
+    
+    /**
+     * Checks if the entity id should be hidden from the client
+     * @param id the entity id to check for
+     * @param worldID the UUID of the world to check in
+     * @return true if the UUID should be hidden
+     */
+    public boolean isHidden(int id, UUID worldID)
+    {
+        for(CloudID cloudID : hiddenIDs)
+        {
+            if(cloudID.getId() == id && cloudID.getWorldID().equals(worldID))
+            {
+                return true;
+            }
+        }
+        return false;
     }
     
     /**
@@ -349,6 +394,10 @@ public class PersistentBlockMetadataAPI implements Listener
                                 " has a key size of only 1! (metacount is " + container.get(countKey, PersistentDataType.INTEGER) + ")");
                     }
                     loadedClouds.put(chunk, (AreaEffectCloud) e);
+                    if(preventSending)
+                    {
+                        hiddenIDs.add(new CloudID(e.getEntityId(), e.getWorld().getUID()));
+                    }
                     break;
                 }
             }
@@ -378,7 +427,21 @@ public class PersistentBlockMetadataAPI implements Listener
                         cloud.getPersistentDataContainer().get(countKey, PersistentDataType.INTEGER) + ")");
             }
             cloud.setTicksLived(1);
+            if(preventSending)
+            {
+                hiddenIDs.removeIf(cloudID -> cloudID.getWorldID() == cloud.getWorld().getUID() && cloudID.getId() == cloud.getEntityId());
+            }
             loadedClouds.remove(event.getChunk());
+        }
+    }
+    
+    @EventHandler
+    public void onPluginEnable(PluginEnableEvent event)
+    {
+        if(preventSending && !sendPreventionReady && event.getPlugin().getName().equals("ProtocolLib"))
+        {
+            CloudSendPrevention.onReady(plugin, this);
+            sendPreventionReady = true;
         }
     }
     
