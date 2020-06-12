@@ -76,15 +76,6 @@ public class WorldTrackingModule implements Listener
     }
     
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    public void onBlockPhysics(BlockPhysicsEvent event)
-    {
-        if(persistentBlockMetadataAPI.has(event.getBlock()))
-        {
-            onBreak(event.getBlock());
-        }
-    }
-    
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onLeavesDecay(LeavesDecayEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))

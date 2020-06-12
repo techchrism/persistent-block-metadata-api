@@ -292,9 +292,16 @@ public class PersistentBlockMetadataAPI implements Listener
     {
         if(!loadedClouds.containsKey(block.getChunk()))
         {
-            return null;
+            loadedClouds.put(block.getChunk(), spawnCloud(getCloudPos(block)));
         }
-        return loadedClouds.get(block.getChunk()).getPersistentDataContainer().get(keyFor(block), PersistentDataType.TAG_CONTAINER);
+        PersistentDataContainer data = loadedClouds.get(block.getChunk()).getPersistentDataContainer();
+        NamespacedKey blockKey = keyFor(block);
+        if(!data.has(blockKey, PersistentDataType.TAG_CONTAINER))
+        {
+            data.set(countKey, PersistentDataType.INTEGER, data.getOrDefault(countKey, PersistentDataType.INTEGER, 0) + 1);
+            data.set(blockKey, PersistentDataType.TAG_CONTAINER, data.getAdapterContext().newPersistentDataContainer());
+        }
+        return data.get(blockKey, PersistentDataType.TAG_CONTAINER);
     }
     
     /**
