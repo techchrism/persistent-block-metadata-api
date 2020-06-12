@@ -188,12 +188,14 @@ public class PersistentBlockMetadataAPI implements Listener
     
     /**
      * Checks if the block has metadata associated with it
+     * @deprecated types should only be containers
      * @param block the block to check
      * @param type the type of data to check for
      * @param <T> the generic type of the stored primitive
      * @param <Z> the generic type of the eventually created complex object
      * @return true if the block has metadata of the type specified
      */
+    @Deprecated
     public <T, Z> boolean has(@NotNull Block block, @NotNull PersistentDataType<T, Z> type)
     {
         if(!loadedClouds.containsKey(block.getChunk()))
@@ -204,13 +206,29 @@ public class PersistentBlockMetadataAPI implements Listener
     }
     
     /**
+     * Checks if the block has metadata associated with it
+     * @param block the block to check
+     * @return true if the block has metadata of the type specified
+     */
+    public boolean has(@NotNull Block block)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            return false;
+        }
+        return loadedClouds.get(block.getChunk()).getPersistentDataContainer().has(keyFor(block), PersistentDataType.TAG_CONTAINER);
+    }
+    
+    /**
      * Sets metadata on the block specified
+     * @deprecated types should only be containers
      * @param block the block to set
      * @param type the type of data to set
      * @param value the value of the data to set
      * @param <T> the generic java type of the tag value
      * @param <Z> the generic type of the object to store
      */
+    @Deprecated
     public <T, Z> void set(@NotNull Block block, @NotNull PersistentDataType<T, Z> type, @NotNull Z value)
     {
         if(!loadedClouds.containsKey(block.getChunk()))
@@ -227,13 +245,35 @@ public class PersistentBlockMetadataAPI implements Listener
     }
     
     /**
+     * Sets metadata on the block specified
+     * @param block the block to set
+     * @param value the value of the data to set
+     */
+    public void set(@NotNull Block block, @NotNull PersistentDataContainer value)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            loadedClouds.put(block.getChunk(), spawnCloud(getCloudPos(block)));
+        }
+        PersistentDataContainer data = loadedClouds.get(block.getChunk()).getPersistentDataContainer();
+        NamespacedKey blockKey = keyFor(block);
+        if(!data.has(blockKey, PersistentDataType.TAG_CONTAINER))
+        {
+            data.set(countKey, PersistentDataType.INTEGER, data.getOrDefault(countKey, PersistentDataType.INTEGER, 0) + 1);
+        }
+        data.set(keyFor(block), PersistentDataType.TAG_CONTAINER, value);
+    }
+    
+    /**
      * Gets previously set metadata from the block specified
+     * @deprecated types should only be containers
      * @param block the block to get metadata from
      * @param type the type of metadata
      * @param <T> the generic type of the stored primitive
      * @param <Z> the generic type of the eventually created complex object
      * @return the value or {@code null} if no value was mapped under the given value
      */
+    @Deprecated
     public <T, Z> Z get(@NotNull Block block, @NotNull PersistentDataType<T, Z> type)
     {
         if(!loadedClouds.containsKey(block.getChunk()))
@@ -241,6 +281,85 @@ public class PersistentBlockMetadataAPI implements Listener
             return null;
         }
         return loadedClouds.get(block.getChunk()).getPersistentDataContainer().get(keyFor(block), type);
+    }
+    
+    /**
+     * Gets previously set metadata from the block specified
+     * @param block the block to get metadata from
+     * @return the value or {@code null} if no value was mapped under the given value
+     */
+    public PersistentDataContainer get(@NotNull Block block)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            return null;
+        }
+        return loadedClouds.get(block.getChunk()).getPersistentDataContainer().get(keyFor(block), PersistentDataType.TAG_CONTAINER);
+    }
+    
+    /**
+     * Removes metadata from the specified block
+     * @deprecated types should only be containers
+     * @param block the block to remove metadata from
+     * @param type the type of metadata
+     * @param <T> the generic type of the stored primitive
+     * @param <Z> the generic type of the eventually created complex object
+     */
+    @Deprecated
+    public <T, Z> void remove(@NotNull Block block, @NotNull PersistentDataType<T, Z> type)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            return;
+        }
+        AreaEffectCloud cloud = loadedClouds.get(block.getChunk());
+        PersistentDataContainer data = cloud.getPersistentDataContainer();
+        NamespacedKey blockKey = keyFor(block);
+        if(data.has(blockKey, type))
+        {
+            int count = data.getOrDefault(countKey, PersistentDataType.INTEGER, 0);
+            if(count <= 1)
+            {
+                cloud.remove();
+                loadedClouds.remove(block.getChunk());
+            }
+            else
+            {
+                data.remove(blockKey);
+                data.set(countKey, PersistentDataType.INTEGER, count - 1);
+            }
+            
+        }
+    }
+    
+    /**
+     * Removes metadata from the specified block
+     * @param block the block to remove metadata from
+     */
+    public void remove(@NotNull Block block)
+    {
+        if(!loadedClouds.containsKey(block.getChunk()))
+        {
+            return;
+        }
+        AreaEffectCloud cloud = loadedClouds.get(block.getChunk());
+        PersistentDataContainer data = cloud.getPersistentDataContainer();
+        NamespacedKey blockKey = keyFor(block);
+        if(data.has(blockKey, PersistentDataType.TAG_CONTAINER))
+        {
+            int count = data.getOrDefault(countKey, PersistentDataType.INTEGER, 0);
+            if(count <= 1)
+            {
+                cloud.remove();
+                loadedClouds.remove(block.getChunk());
+            }
+            else
+            {
+                data.remove(blockKey);
+                data.set(countKey, PersistentDataType.INTEGER, count - 1);
+            }
+            
+        }
     }
     
     /**
@@ -303,8 +422,10 @@ public class PersistentBlockMetadataAPI implements Listener
     
     /**
      * Removes a tag container for the specified block
+     * @deprecated use {@link #remove(Block)}
      * @param block the block to remove the tag container from
      */
+    @Deprecated
     public void removeContainer(@NotNull Block block)
     {
         remove(block, PersistentDataType.TAG_CONTAINER);
@@ -312,9 +433,11 @@ public class PersistentBlockMetadataAPI implements Listener
     
     /**
      * Gets a tag container for a block and creates one if it doesn't exist
+     * @deprecated use {@link #get(Block)}
      * @param block the block to get the tag container for
      * @return the tag container for the block
      */
+    @Deprecated
     public PersistentDataContainer getContainer(@NotNull Block block)
     {
         if(!loadedClouds.containsKey(block.getChunk()))
@@ -331,6 +454,13 @@ public class PersistentBlockMetadataAPI implements Listener
         return data.get(blockKey, PersistentDataType.TAG_CONTAINER);
     }
     
+    /**
+     * Sets a tag container for a block
+     * @deprecated use {@link #set(Block, PersistentDataContainer)}
+     * @param block the block to set metadata for
+     * @param container the container to attach to the block
+     */
+    @Deprecated
     public void setContainer(@NotNull Block block, @NotNull PersistentDataContainer container)
     {
         if(!loadedClouds.containsKey(block.getChunk()))
@@ -338,39 +468,6 @@ public class PersistentBlockMetadataAPI implements Listener
             throw new IllegalArgumentException();
         }
         set(block, PersistentDataType.TAG_CONTAINER, container);
-    }
-    
-    /**
-     * Removes metadata from the specified block
-     * @param block the block to remove metadata from
-     * @param type the type of metadata
-     * @param <T> the generic type of the stored primitive
-     * @param <Z> the generic type of the eventually created complex object
-     */
-    public <T, Z> void remove(@NotNull Block block, @NotNull PersistentDataType<T, Z> type)
-    {
-        if(!loadedClouds.containsKey(block.getChunk()))
-        {
-            return;
-        }
-        AreaEffectCloud cloud = loadedClouds.get(block.getChunk());
-        PersistentDataContainer data = cloud.getPersistentDataContainer();
-        NamespacedKey blockKey = keyFor(block);
-        if(data.has(blockKey, type))
-        {
-            int count = data.getOrDefault(countKey, PersistentDataType.INTEGER, 0);
-            if(count <= 1)
-            {
-                cloud.remove();
-                loadedClouds.remove(block.getChunk());
-            }
-            else
-            {
-                data.remove(blockKey);
-                data.set(countKey, PersistentDataType.INTEGER, count - 1);
-            }
-            
-        }
     }
     
     /**
