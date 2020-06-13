@@ -46,7 +46,16 @@ public class WorldTrackingModule implements Listener
     }
     
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    public void onBlockBurn(BlockBreakEvent event)
+    public void onBlockBreak(BlockBreakEvent event)
+    {
+        if(persistentBlockMetadataAPI.has(event.getBlock()))
+        {
+            onBreak(event.getBlock());
+        }
+    }
+    
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    public void onBlockBurn(BlockBurnEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))
         {
@@ -97,7 +106,7 @@ public class WorldTrackingModule implements Listener
     }
     
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
-    public void onBlockPistonRetractEvent(BlockPistonExtendEvent event)
+    public void onBlockPistonRetractEvent(BlockPistonRetractEvent event)
     {
         for(Block check : event.getBlocks())
         {
