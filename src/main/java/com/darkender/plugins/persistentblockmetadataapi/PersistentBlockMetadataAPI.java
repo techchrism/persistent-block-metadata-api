@@ -508,7 +508,7 @@ public class PersistentBlockMetadataAPI implements Listener
         }
     }
     
-    // Priority low so regular listeners can query metddata at normal priority
+    // Priority low so regular listeners can query metadata at normal priority
     // and LOWEST listeners can still cancel the event
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     private void onChunkLoad(ChunkLoadEvent event)
@@ -516,7 +516,7 @@ public class PersistentBlockMetadataAPI implements Listener
         checkChunk(event.getChunk());
     }
     
-    // Priority monitor so regular listeners can query metddata at normal priority
+    // Priority monitor so regular listeners can query metadata at normal priority
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     private void onChunkUnload(ChunkUnloadEvent event)
     {

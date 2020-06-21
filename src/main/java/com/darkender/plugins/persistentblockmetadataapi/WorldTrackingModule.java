@@ -15,6 +15,11 @@ public class WorldTrackingModule implements Listener
     private final PersistentBlockMetadataAPI persistentBlockMetadataAPI;
     private MetadataWorldTrackObserver metadataWorldTrackObserver = null;
     
+    /**
+     * Constructs the WorldTrackingModule
+     * @param plugin the plugin to use as a base for event handling
+     * @param persistentBlockMetadataAPI the instance of the {@link PersistentBlockMetadataAPI} storing data
+     */
     public WorldTrackingModule(Plugin plugin, PersistentBlockMetadataAPI persistentBlockMetadataAPI)
     {
         this.persistentBlockMetadataAPI = persistentBlockMetadataAPI;
@@ -40,6 +45,10 @@ public class WorldTrackingModule implements Listener
         persistentBlockMetadataAPI.remove(from);
     }
     
+    /**
+     * Sets the {@link MetadataWorldTrackObserver} interface that gets called when a block with metadata is broken or moved
+     * @param metadataWorldTrackObserver interface to set
+     */
     public void setMetadataWorldTrackObserver(MetadataWorldTrackObserver metadataWorldTrackObserver)
     {
         this.metadataWorldTrackObserver = metadataWorldTrackObserver;
