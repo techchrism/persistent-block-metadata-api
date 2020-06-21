@@ -540,7 +540,7 @@ public class PersistentBlockMetadataAPI implements Listener
     }
     
     @EventHandler
-    public void onPluginEnable(PluginEnableEvent event)
+    private void onPluginEnable(PluginEnableEvent event)
     {
         if(preventSending && !sendPreventionReady && event.getPlugin().getName().equals("ProtocolLib"))
         {
