@@ -555,6 +555,12 @@ public class PersistentBlockMetadataAPI implements Listener
                         remove(block);
                     }
                 }
+                
+                // Check if *all* data was removed
+                if(!loadedClouds.containsKey(event.getChunk()))
+                {
+                    return;
+                }
             }
             if(getKeys(cloud.getPersistentDataContainer()).size() == 1)
             {
