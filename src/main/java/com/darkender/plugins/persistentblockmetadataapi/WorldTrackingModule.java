@@ -2,9 +2,7 @@ package com.darkender.plugins.persistentblockmetadataapi;
 
 import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.EventPriority;
-import org.bukkit.event.Listener;
+import org.bukkit.event.*;
 import org.bukkit.event.block.*;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
@@ -26,23 +24,33 @@ public class WorldTrackingModule implements Listener
         Bukkit.getPluginManager().registerEvents(this, plugin);
     }
     
-    private void onBreak(Block block)
+    private void onBreak(Block block, Event event)
     {
         if(metadataWorldTrackObserver != null)
         {
-            metadataWorldTrackObserver.onBreak(block);
+            metadataWorldTrackObserver.onBreak(block, event);
         }
-        persistentBlockMetadataAPI.remove(block);
+        
+        // Remove the block if the event hasn't been cancelled
+        if(!((event instanceof Cancellable) && ((Cancellable) event).isCancelled()))
+        {
+            persistentBlockMetadataAPI.remove(block);
+        }
     }
     
-    private void onMove(Block from, Block to)
+    private void onMove(Block from, Block to, Event event)
     {
         if(metadataWorldTrackObserver != null)
         {
-            metadataWorldTrackObserver.onMove(from, to);
+            metadataWorldTrackObserver.onMove(from, to, event);
         }
-        persistentBlockMetadataAPI.set(to, persistentBlockMetadataAPI.get(from));
-        persistentBlockMetadataAPI.remove(from);
+    
+        // Move the block if the event hasn't been cancelled
+        if(!((event instanceof Cancellable) && ((Cancellable) event).isCancelled()))
+        {
+            persistentBlockMetadataAPI.set(to, persistentBlockMetadataAPI.get(from));
+            persistentBlockMetadataAPI.remove(from);
+        }
     }
     
     /**
@@ -54,95 +62,95 @@ public class WorldTrackingModule implements Listener
         this.metadataWorldTrackObserver = metadataWorldTrackObserver;
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onBlockBreak(BlockBreakEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))
         {
-            onBreak(event.getBlock());
+            onBreak(event.getBlock(), event);
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onBlockBurn(BlockBurnEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))
         {
-            onBreak(event.getBlock());
+            onBreak(event.getBlock(), event);
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onBlockExplode(BlockExplodeEvent event)
     {
         for(Block check : event.blockList())
         {
             if(persistentBlockMetadataAPI.has(check))
             {
-                onBreak(event.getBlock());
+                onBreak(event.getBlock(), event);
             }
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onBlockFade(BlockFadeEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))
         {
-            onBreak(event.getBlock());
+            onBreak(event.getBlock(), event);
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onLeavesDecay(LeavesDecayEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))
         {
-            onBreak(event.getBlock());
+            onBreak(event.getBlock(), event);
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onBlockPistonExtendEvent(BlockPistonExtendEvent event)
     {
         for(Block check : event.getBlocks())
         {
             if(persistentBlockMetadataAPI.has(check))
             {
-                onMove(check, check.getRelative(event.getDirection()));
+                onMove(check, check.getRelative(event.getDirection()), event);
             }
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onBlockPistonRetractEvent(BlockPistonRetractEvent event)
     {
         for(Block check : event.getBlocks())
         {
             if(persistentBlockMetadataAPI.has(check))
             {
-                onMove(check, check.getRelative(event.getDirection()));
+                onMove(check, check.getRelative(event.getDirection()), event);
             }
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onEntityChangeBlock(EntityChangeBlockEvent event)
     {
         if(persistentBlockMetadataAPI.has(event.getBlock()))
         {
-            onBreak(event.getBlock());
+            onBreak(event.getBlock(), event);
         }
     }
     
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.HIGHEST)
     private void onEntityExplode(EntityExplodeEvent event)
     {
         for(Block check : event.blockList())
         {
             if(persistentBlockMetadataAPI.has(check))
             {
-                onBreak(check);
+                onBreak(check, event);
             }
         }
     }
