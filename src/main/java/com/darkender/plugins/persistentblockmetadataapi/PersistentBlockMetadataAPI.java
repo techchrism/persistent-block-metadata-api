@@ -32,6 +32,7 @@ public class PersistentBlockMetadataAPI implements Listener
     private boolean sendPreventionReady = false;
     private final Map<Chunk, AreaEffectCloud> reconstructedClouds = new HashMap<>();
     private final Set<CloudID> hiddenIDs = new HashSet<>();
+    private LoadUnloadTypeChecker loadUnloadTypeChecker = null;
     
     /**
      * Construct the PersistentBlockMetadataAPI
@@ -101,6 +102,11 @@ public class PersistentBlockMetadataAPI implements Listener
             }
             
         }, 1L, 20L);
+    }
+    
+    public void setLoadUnloadTypeChecker(LoadUnloadTypeChecker loadUnloadTypeChecker)
+    {
+        this.loadUnloadTypeChecker = loadUnloadTypeChecker;
     }
     
     private static MethodHandle findGetRawHandle()
@@ -502,6 +508,18 @@ public class PersistentBlockMetadataAPI implements Listener
                     {
                         hiddenIDs.add(new CloudID(e.getEntityId(), e.getWorld().getUID()));
                     }
+    
+                    if(loadUnloadTypeChecker != null)
+                    {
+                        for(Block block : getMetadataLocations(chunk))
+                        {
+                            if(loadUnloadTypeChecker.shouldRemove(block, get(block)))
+                            {
+                                remove(block);
+                            }
+                        }
+                    }
+                    
                     break;
                 }
             }
@@ -524,6 +542,16 @@ public class PersistentBlockMetadataAPI implements Listener
         if(loadedClouds.containsKey(event.getChunk()))
         {
             AreaEffectCloud cloud = loadedClouds.get(event.getChunk());
+            if(loadUnloadTypeChecker != null)
+            {
+                for(Block block : getMetadataLocations(event.getChunk()))
+                {
+                    if(loadUnloadTypeChecker.shouldRemove(block, get(block)))
+                    {
+                        remove(block);
+                    }
+                }
+            }
             if(getKeys(cloud.getPersistentDataContainer()).size() == 1)
             {
                 Bukkit.getLogger().warning("Cloud at " + event.getChunk().getX() + " " + event.getChunk().getZ() +
