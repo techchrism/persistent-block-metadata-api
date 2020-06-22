@@ -1,7 +1,30 @@
-## PersistentBlockMetadataAPI
+# PersistentBlockMetadataAPI
 
 This is an API to enable saving metadata on blocks using area effect clouds.
 One cloud per plugin (using the API) per chunk (containing blocks with metadata from that plugin) is used.
+
+## Javadocs
+
+[https://thetechdoodle.github.io/persistent-block-metadata-api/](https://thetechdoodle.github.io/persistent-block-metadata-api/)
+
+## Maven
+
+```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
+<dependency>
+    <groupId>com.github.TheTechdoodle</groupId>
+    <artifactId>persistent-block-metadata-api</artifactId>
+    <version>v2.8-SNAPSHOT</version>
+</dependency>
+```
+
+## Use Case
 
 Advantages:
 * Saved block data is synced with chunk saving; even in unexpected situations\
