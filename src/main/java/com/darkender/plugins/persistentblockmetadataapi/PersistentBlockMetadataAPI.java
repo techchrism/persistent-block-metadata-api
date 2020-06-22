@@ -227,7 +227,7 @@ public class PersistentBlockMetadataAPI implements Listener
     }
     
     /**
-     * Gets previously set metadata from the block specified
+     * Gets previously set metadata from the block specified or creates one if it doesn't exist
      * @param block the block to get metadata from
      * @return the value or {@code null} if no value was mapped under the given value
      */
