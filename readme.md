@@ -20,7 +20,7 @@ One cloud per plugin (using the API) per chunk (containing blocks with metadata 
 <dependency>
     <groupId>com.github.TheTechdoodle</groupId>
     <artifactId>persistent-block-metadata-api</artifactId>
-    <version>v2.8-SNAPSHOT</version>
+    <version>v1.0.0</version>
 </dependency>
 ```
 
