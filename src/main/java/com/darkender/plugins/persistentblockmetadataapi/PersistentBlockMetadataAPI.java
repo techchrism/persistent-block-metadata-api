@@ -365,6 +365,10 @@ public class PersistentBlockMetadataAPI implements Listener
             {
                 cloud.remove();
                 loadedClouds.remove(block.getChunk());
+                if(preventSending)
+                {
+                    hiddenIDs.removeIf(cloudID -> cloudID.getWorldID() == cloud.getWorld().getUID() && cloudID.getId() == cloud.getEntityId());
+                }
             }
             else
             {
